@@ -26,9 +26,17 @@ for line in lines:
     measurement = float(line[3])
     measurements.append(measurement)
 
+# Data Augmentation to remove left turn bias
+augmented_images, augmented_measurements =[], []
+for image, measurement in zip(images, measurements):
+    augmented_images.append(image)
+    augmented_measurements.append(measurement)
+    augmented_images.append(cv2.flip(image, 1))
+    augmented_measurements.append(measurement*-1.0)
+
 # Keras only accespt numpy arrays
-X_train = np.array(images)
-y_train = np.array(measurements)
+X_train = np.array(augmented_images)
+y_train = np.array(augmented_measurements)
 
 # Regression network
 from keras.models import Sequential
@@ -50,7 +58,7 @@ model.add(Dense(84))
 model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
-model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=5)
+model.fit(X_train, y_train, validation_split=0.2, shuffle=True, nb_epoch=2)
 
 model.save('model.h5')
 exit()
