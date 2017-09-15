@@ -15,7 +15,7 @@ from keras.layers import MaxPooling2D
 from keras.layers import Convolution2D
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 
-epoch_size = 5
+epoch_size = 6
 batch_size = 32
 csv_path = '../data1combo/driving_log.csv'
 img_path = '../data1combo/IMG/'
@@ -65,25 +65,30 @@ def process_batch(batch_samples):
 
 def augment_image(images, angles):
     augmented_images, augmented_measurements = [], []
+    for image, measurement in zip(images, angles):
+        augmented_images.append(image)
+        augmented_measurements.append(measurement)
+        augmented_images.append(cv2.flip(image, 1))
+        augmented_measurements.append(measurement*-1.0)
 
-    for image, angle in zip(images, angles):
-        if (abs(angle) > 0.04):
-            img1 = RGB_to_YUV(BGR_to_RGB(image))
-            augmented_images.append(img1)
-            augmented_measurements.append(angle)
-            # Generate 5 new images per input image
-            for i in range(5):
-                if (angle < -0.3 or angle > 0.3):
-                    # Image read from cv2 is in BGR format
-                    img = BGR_to_RGB(image)
-                    img = random_image_brightness(img)
-                    img = RGB_to_YUV(img)
-                    # Flip image around y-axis
-                    img = cv2.flip(img, 1)
-                    ang = (angle * -1.0)
-
-                    augmented_images.append(img)
-                    augmented_measurements.append(ang)
+    # for image, angle in zip(images, angles):
+        # if (abs(angle) > 0.04):
+        #     img1 = RGB_to_YUV(BGR_to_RGB(image))
+        #     augmented_images.append(img1)
+        #     augmented_measurements.append(angle)
+        #     # Generate 5 new images per input image
+        #     for i in range(5):
+        #         if (angle < -0.3 or angle > 0.3):
+        #             # Image read from cv2 is in BGR format
+        #             img = BGR_to_RGB(image)
+        #             img = random_image_brightness(img)
+        #             img = RGB_to_YUV(img)
+        #             # Flip image around y-axis
+        #             img = cv2.flip(img, 1)
+        #             ang = (angle * -1.0)
+        #
+        #             augmented_images.append(img)
+        #             augmented_measurements.append(ang)
 
     return augmented_images, augmented_measurements
 
@@ -94,9 +99,12 @@ def generator(samples):
         sklearn.utils.shuffle(samples)
         for offset in range(0, num_samples, batch_size):
             batch_samples = samples[offset : offset+batch_size]
+
             images, angles = process_batch(batch_samples)
-            X_train = np.array(images)
-            y_train = np.array(angles)
+            aug_images, aug_angles = augment_image(images, angles)
+
+            X_train = np.array(aug_images)
+            y_train = np.array(aug_angles)
 
             yield sklearn.utils.shuffle(X_train, y_train)
 
@@ -140,7 +148,7 @@ def build_model():
 
 # Compile and train the model using the generator function
 def train_model(model, train_samples, validation_samples):
-    model.compile(loss='mse', optimizer=Adam(lr=0.0001))
+    model.compile(loss='mse', optimizer=Adam(lr=0.001))
     model.fit_generator(generator(train_samples), samples_per_epoch=len(train_samples), validation_data=generator(validation_samples),
                         nb_val_samples=len(validation_samples), nb_epoch=epoch_size)
     model.save('model.h5')
