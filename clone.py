@@ -1,3 +1,6 @@
+
+# Working version of this file is moved to "model.py"
+
 import csv
 import cv2
 import sklearn
